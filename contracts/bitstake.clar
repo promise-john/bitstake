@@ -362,3 +362,57 @@
     )
   )
 )
+
+;; LOCK PERIOD MULTIPLIERS
+
+(define-private (calculate-lock-multiplier (lock-period uint))
+  (if (>= lock-period u8640) ;; 60+ day lock period
+    u150 ;; 1.5x multiplier bonus
+    (if (>= lock-period u4320) ;; 30-59 day lock period
+      u125 ;; 1.25x multiplier bonus
+      u100 ;; No lock bonus (1x)
+    )
+  )
+)
+
+;; REWARDS CALCULATION  
+
+(define-private (calculate-rewards
+    (user principal)
+    (blocks uint)
+  )
+  (let (
+      (staking-position (unwrap! (map-get? StakingPositions user) u0))
+      (user-position (unwrap! (map-get? UserPositions user) u0))
+      (stake-amount (get amount staking-position))
+      (base-rate (var-get base-reward-rate))
+      (multiplier (get rewards-multiplier user-position))
+    )
+    ;; Formula: (stake * rate * multiplier * blocks) / blocks_per_year
+    (/ (* (* (* stake-amount base-rate) multiplier) blocks) u14400000)
+  )
+)
+
+;; VALIDATION FUNCTIONS 
+
+(define-private (is-valid-description (desc (string-utf8 256)))
+  (and
+    (>= (len desc) u10) ;; Minimum 10 characters
+    (<= (len desc) u256) ;; Maximum 256 characters
+  )
+)
+
+(define-private (is-valid-lock-period (lock-period uint))
+  (or
+    (is-eq lock-period u0) ;; No lock
+    (is-eq lock-period u4320) ;; 30 days (~4320 blocks)
+    (is-eq lock-period u8640) ;; 60 days (~8640 blocks)
+  )
+)
+
+(define-private (is-valid-voting-period (period uint))
+  (and
+    (>= period u100) ;; Minimum 100 blocks (~16 hours)
+    (<= period u2880) ;; Maximum 2880 blocks (~20 days)
+  )
+)
