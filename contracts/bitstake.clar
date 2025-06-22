@@ -291,3 +291,74 @@
     (ok true)
   )
 )
+
+;; CONTRACT ADMINISTRATION 
+
+(define-public (pause-contract)
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
+    (var-set contract-paused true)
+    (ok true)
+  )
+)
+
+(define-public (resume-contract)
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
+    (var-set contract-paused false)
+    (ok true)
+  )
+)
+
+;; READ-ONLY FUNCTIONS 
+
+(define-read-only (get-contract-owner)
+  (ok CONTRACT-OWNER)
+)
+
+(define-read-only (get-stx-pool)
+  (ok (var-get stx-pool))
+)
+
+(define-read-only (get-proposal-count)
+  (ok (var-get proposal-count))
+)
+
+(define-read-only (get-user-position (user principal))
+  (ok (map-get? UserPositions user))
+)
+
+(define-read-only (get-staking-position (user principal))
+  (ok (map-get? StakingPositions user))
+)
+
+(define-read-only (get-proposal-details (proposal-id uint))
+  (ok (map-get? Proposals { proposal-id: proposal-id }))
+)
+
+(define-read-only (is-contract-paused)
+  (ok (var-get contract-paused))
+)
+
+;; PRIVATE FUNCTIONS 
+
+;; TIER CALCULATION   
+
+(define-private (get-tier-info (stake-amount uint))
+  (if (>= stake-amount u10000000) ;; Gold Tier: 10+ STX
+    {
+      tier-level: u3,
+      reward-multiplier: u200,
+    }
+    (if (>= stake-amount u5000000) ;; Silver Tier: 5-9.99 STX
+      {
+        tier-level: u2,
+        reward-multiplier: u150,
+      }
+      {
+        tier-level: u1,
+        reward-multiplier: u100,
+      } ;; Bronze Tier: 1-4.99 STX
+    )
+  )
+)
